@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from typing import Iterable, TYPE_CHECKING
 
 import torch
@@ -13,9 +15,98 @@ from .base import ModelBase, TextModel, gguf, logger
 @ModelBase.register("HYV3ForCausalLM")
 class HYV3Model(TextModel):
     model_arch = gguf.MODEL_ARCH.HYV3
+    eos_token = "<eos:6124c78e>"
 
     def set_vocab(self):
         self._set_vocab_gpt2()
+        eos_id = self._get_eos_token_id()
+        if eos_id is not None:
+            logger.info(f"gguf: HYV3 EOS token {self.eos_token!r} id = {eos_id}")
+            self.gguf_writer.add_eos_token_id(eos_id)
+        else:
+            logger.warning(
+                f"gguf: HYV3 EOS token {self.eos_token!r} not found; "
+                "generation may print it instead of stopping"
+            )
+
+    def _load_json(self, name: str):
+        path = self.dir_model / name
+        if not path.is_file():
+            return None
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+
+    @staticmethod
+    def _token_content(value) -> str | None:
+        if isinstance(value, str):
+            return value
+        if isinstance(value, dict):
+            content = value.get("content")
+            if isinstance(content, str):
+                return content
+        return None
+
+    def _find_token_id(self, token: str) -> int | None:
+        tokenizer_config = self._load_json("tokenizer_config.json")
+        if tokenizer_config is not None:
+            added_tokens = tokenizer_config.get("added_tokens_decoder", {})
+            if isinstance(added_tokens, dict):
+                for token_id, data in added_tokens.items():
+                    if self._token_content(data) == token:
+                        return int(token_id)
+
+        tokenizer = self._load_json("tokenizer.json")
+        if tokenizer is not None:
+            added_tokens = tokenizer.get("added_tokens", [])
+            if isinstance(added_tokens, list):
+                for data in added_tokens:
+                    if self._token_content(data) == token:
+                        token_id = data.get("id")
+                        if isinstance(token_id, int):
+                            return token_id
+
+            vocab = tokenizer.get("model", {}).get("vocab", {})
+            if isinstance(vocab, dict):
+                token_id = vocab.get(token)
+                if isinstance(token_id, int):
+                    return token_id
+
+        vocab = self._load_json("vocab.json")
+        if vocab is not None:
+            token_id = vocab.get(token)
+            if isinstance(token_id, int):
+                return token_id
+
+        return None
+
+    @staticmethod
+    def _first_token_id(value) -> int | None:
+        if isinstance(value, int):
+            return value
+        if isinstance(value, list):
+            return next((token_id for token_id in value if isinstance(token_id, int)), None)
+        return None
+
+    def _get_eos_token_id(self) -> int | None:
+        token_id = self._find_token_id(self.eos_token)
+        if token_id is not None:
+            return token_id
+
+        tokenizer_config = self._load_json("tokenizer_config.json")
+        if tokenizer_config is not None:
+            eos_token = self._token_content(tokenizer_config.get("eos_token"))
+            if eos_token is not None:
+                token_id = self._find_token_id(eos_token)
+                if token_id is not None:
+                    return token_id
+
+        generation_config = self._load_json("generation_config.json")
+        if generation_config is not None:
+            token_id = self._first_token_id(generation_config.get("eos_token_id"))
+            if token_id is not None:
+                return token_id
+
+        return self._first_token_id(self.hparams.get("eos_token_id"))
 
     def set_gguf_parameters(self):
         super().set_gguf_parameters()
