@@ -171,6 +171,9 @@ class TensorNameMap:
         MODEL_TENSOR.A_QF_PROJ_LINEAR: (
             "projector.linear",
         ),
+        MODEL_TENSOR.BLK_TOPOLOGY_ROUTER: (
+            "model.layers.{bid}.topology_router.weight",
+        ),
     }
 
     block_mappings_cfg: dict[MODEL_TENSOR, tuple[str, ...]] = {

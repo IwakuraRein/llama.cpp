@@ -820,6 +820,7 @@ class MODEL_TENSOR(IntEnum):
     V_ENC_EMBD_VSEP      = auto() # Deepseek-OCR
     V_RESMPL_QUERY_768   = auto() # Deepseek-OCR-2
     V_RESMPL_QUERY_1024  = auto() # Deepseek-OCR-2
+    BLK_TOPOLOGY_ROUTER  = auto()
 
     # audio (mtmd)
     A_ENC_EMBD_POS        = auto()
@@ -1423,6 +1424,7 @@ TENSOR_NAMES: dict[MODEL_TENSOR, str] = {
     MODEL_TENSOR.NEXTN_HNORM:               "blk.{bid}.nextn.hnorm",
     MODEL_TENSOR.NEXTN_SHARED_HEAD_HEAD:    "blk.{bid}.nextn.shared_head_head",
     MODEL_TENSOR.NEXTN_SHARED_HEAD_NORM:    "blk.{bid}.nextn.shared_head_norm",
+    MODEL_TENSOR.BLK_TOPOLOGY_ROUTER:       "blk.{bid}.topology_router",
 }
 
 MODEL_TENSORS: dict[MODEL_ARCH, list[MODEL_TENSOR]] = {

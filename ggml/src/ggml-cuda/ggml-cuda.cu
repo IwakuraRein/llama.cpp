@@ -2822,6 +2822,9 @@ static bool ggml_cuda_compute_forward(ggml_backend_cuda_context & ctx, struct gg
         case GGML_OP_CONT:
             ggml_cuda_dup(ctx, dst);
             break;
+        case GGML_OP_ADELIC_CONDENSE:
+            ggml_cuda_op_adelic_condense(ctx, dst);
+            break;
         case GGML_OP_ADD:
         case GGML_OP_ADD1: // TODO: more efficient implementation
             ggml_cuda_op_add(ctx, dst);
@@ -3009,6 +3012,7 @@ static bool ggml_cuda_compute_forward(ggml_backend_cuda_context & ctx, struct gg
         case GGML_OP_NONE:
         case GGML_OP_RESHAPE:
         case GGML_OP_VIEW:
+        case GGML_OP_ADELIC_CONDENSE:
         case GGML_OP_PERMUTE:
         case GGML_OP_TRANSPOSE:
                 break;
@@ -5320,6 +5324,7 @@ static bool ggml_backend_cuda_device_supports_op(ggml_backend_dev_t dev, const g
         case GGML_OP_NONE:
         case GGML_OP_RESHAPE:
         case GGML_OP_VIEW:
+        case GGML_OP_ADELIC_CONDENSE:
         case GGML_OP_PERMUTE:
         case GGML_OP_TRANSPOSE:
         case GGML_OP_ADD_ID:

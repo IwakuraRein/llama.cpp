@@ -95,6 +95,7 @@ void llama_model_qwen35::load_arch_tensors(llama_model_loader & ml) {
         layer.ffn_gate = create_tensor(tn(LLM_TENSOR_FFN_GATE, "weight", il), {n_embd,   n_ff}, flags);
         layer.ffn_down = create_tensor(tn(LLM_TENSOR_FFN_DOWN, "weight", il), {  n_ff, n_embd}, flags);
         layer.ffn_up   = create_tensor(tn(LLM_TENSOR_FFN_UP,   "weight", il), {n_embd,   n_ff}, flags);
+        layer.topology_router = create_tensor(tn(LLM_TENSOR_TOPOLOGY_ROUTER, "weight", il), {n_embd, n_embd}, TENSOR_NOT_REQUIRED);
     };
 
     auto load_block_mtp = [&](int il) {

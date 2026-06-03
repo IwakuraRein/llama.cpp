@@ -583,6 +583,7 @@ extern "C" {
 
         GGML_OP_GLU,
 
+        GGML_OP_ADELIC_CONDENSE,
         GGML_OP_COUNT,
     };
 
