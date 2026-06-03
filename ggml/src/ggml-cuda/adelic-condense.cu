@@ -56,7 +56,7 @@ __global__ void adelic_condense_kernel_f16(
     if (s_norm_curr > 0.0f && s_norm_prev > 0.0f) {
         float cos_sim = s_dot / (sqrtf(s_norm_curr) * sqrtf(s_norm_prev) + 1e-6f);
         if (cos_sim > threshold) {
-            *(half *)(k_cache + k_offset) = __float2half(-1e4f);
+            *(half *)(k_cache + k_offset) = __float2half(0.0f);
         }
     }
 }
@@ -115,7 +115,7 @@ __global__ void adelic_condense_kernel_f32(
     if (s_norm_curr > 0.0f && s_norm_prev > 0.0f) {
         float cos_sim = s_dot / (sqrtf(s_norm_curr) * sqrtf(s_norm_prev) + 1e-6f);
         if (cos_sim > threshold) {
-            *(float *)(k_cache + k_offset) = -1e4f;
+            *(float *)(k_cache + k_offset) = 0.0f;
         }
     }
 }
