@@ -97,6 +97,8 @@ void llama_model_gemma4::load_arch_tensors(llama_model_loader &) {
         layer.ffn_down = create_tensor(tn(LLM_TENSOR_FFN_DOWN, "weight", i), {n_ff_cur, n_embd}, 0);
         layer.ffn_post_norm = create_tensor(tn(LLM_TENSOR_FFN_POST_NORM, "weight", i), {n_embd}, 0);
 
+        layer.topology_router = create_tensor(tn(LLM_TENSOR_TOPOLOGY_ROUTER, "weight", i), {n_embd, n_embd}, TENSOR_NOT_REQUIRED);
+
         // MoE router
         layer.ffn_gate_inp = create_tensor(tn(LLM_TENSOR_FFN_GATE_INP, "weight", i), {n_embd, n_expert}, TENSOR_NOT_REQUIRED);
         bool has_expert = layer.ffn_gate_inp != nullptr;
@@ -259,9 +261,21 @@ llama_model_gemma4::graph::graph(const llama_model & model, const llm_graph_para
 
             cb(Kcur, "Kcur_pos", il);
 
+            ggml_tensor * orig_kq_mask = inp_attn->self_kq_mask_cnv;
+            if (model.layers[il].topology_router) {
+                ggml_tensor * v_cache = inp_attn->mctx->get_v(ctx0, il);
+                ggml_tensor * condense = ggml_adelic_condense(ctx0, orig_kq_mask, v_cache, model.layers[il].topology_router);
+                ggml_build_forward_expand(gf, condense);
+                inp_attn->self_kq_mask_cnv = condense;
+            }
+
             cur = build_attn(inp_attn, model.layers[il].wo,
                     nullptr, model.layers[il].wo_s, Qcur, Kcur, Vcur, nullptr, nullptr, nullptr,
                     hparams.f_attention_scale, il);
+            
+            if (model.layers[il].topology_router) {
+                inp_attn->self_kq_mask_cnv = orig_kq_mask;
+            }
         } else {
             // reuse KV cache of earlier layers
             cur = build_attn(inp_attn,
