@@ -1,4 +1,8 @@
-# llama.cpp
+# llama.cpp (Adèlic KV-Cache Fork)
+
+> [!IMPORTANT]
+> **This is a custom fork of llama.cpp.** It implements the **Adèlic Topology Router** and **p-adic KV-Cache Condensation** for infinite-context generation. 
+> To use the custom kernels, compile with `-DGGML_CUDA=ON` and run your models (e.g., Gemma 4 31B) with the `adelic-` prefixed GGUF files. See the [Hugging Face Repository](https://huggingface.co/sneedjak/Adelic-Gemma-4-31B-it) for more details.
 
 ![llama](https://user-images.githubusercontent.com/1991296/230134379-7181e485-c521-4d23-a0d6-f7b3b61ba524.png)
 
