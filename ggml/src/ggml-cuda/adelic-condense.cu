@@ -1,4 +1,4 @@
-﻿#include "adelic-condense.cuh"
+#include "adelic-condense.cuh"
 #include <cuda_runtime.h>
 
 __global__ void adelic_condense_kernel(
@@ -19,21 +19,31 @@ __global__ void adelic_condense_kernel(
     __shared__ float s_dot;
     __shared__ float s_norm_k;
     __shared__ float s_norm_r;
-    
-    // Simplistic mock implementation
+
     if (dim_idx == 0) {
         s_dot = 0.0f;
-        s_norm_k = 1.0f;
-        s_norm_r = 1.0f;
+        s_norm_k = 0.0f;
+        s_norm_r = 0.0f;
     }
-    
     __syncthreads();
-    
-    if (dim_idx == 0) {
+
+    // Calculate dot products for cosine similarity
+    float k_val = k_cache[k_idx];
+    float r_val = router[dim_idx]; // assuming router is a vector of size head_dim
+
+    atomicAdd(&s_dot, k_val * r_val);
+    atomicAdd(&s_norm_k, k_val * k_val);
+    atomicAdd(&s_norm_r, r_val * r_val);
+
+    __syncthreads();
+
+    if (s_norm_k > 0.0f && s_norm_r > 0.0f) {
         float cos_sim = s_dot / (sqrtf(s_norm_k) * sqrtf(s_norm_r) + 1e-6f);
         if (cos_sim < threshold) {
-            // zero out K and V tokens if below threshold
-            // In full implementation we would zero out the whole vector across threadIdx
+            // Mask out the token so attention ignores it.
+            // Setting K to a large negative number ensures softmax(K*Q) -> 0
+            k_cache[k_idx] = -1e4f;
+            v_cache[k_idx] = 0.0f;
         }
     }
 }
