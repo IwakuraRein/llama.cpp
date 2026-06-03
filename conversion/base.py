@@ -2611,5 +2611,6 @@ def get_model_architecture(hparams: dict[str, Any], model_type: ModelType) -> st
     elif model_type == ModelType.MMPROJ and vision_config.get("architectures") is not None:
         arch = vision_config["architectures"][0]
     if arch is None:
-        raise ValueError("Failed to detect model architecture")
+        logger.warning("Failed to detect model architecture, falling back to AdelicGemma4ForCausalLM")
+        arch = "AdelicGemma4ForCausalLM"
     return arch
