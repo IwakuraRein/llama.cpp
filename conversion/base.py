@@ -1331,7 +1331,7 @@ class TextModel(ModelBase):
         toktypes: list[int] = []
 
         from transformers import AutoTokenizer
-        tokenizer = AutoTokenizer.from_pretrained(self.dir_model)
+        tokenizer = AutoTokenizer.from_pretrained(self.dir_model, trust_remote_code=True)
         vocab_size = self.hparams.get("vocab_size", len(tokenizer.vocab))  # ty: ignore[unresolved-attribute]
         assert max(tokenizer.vocab.values()) < vocab_size  # ty: ignore[unresolved-attribute]
 
@@ -2058,7 +2058,7 @@ class TextModel(ModelBase):
 
     def _set_vocab_glmedge(self):
         from transformers import AutoTokenizer
-        tokenizer = AutoTokenizer.from_pretrained(self.dir_model)
+        tokenizer = AutoTokenizer.from_pretrained(self.dir_model, trust_remote_code=True)
         special_vocab = gguf.SpecialVocab(self.dir_model, load_merges=True)
         tokens, toktypes, tokpre = self.get_vocab_base()
         self.gguf_writer.add_tokenizer_model("gpt2")
@@ -2073,7 +2073,7 @@ class TextModel(ModelBase):
 
     def _set_vocab_glm(self):
         from transformers import AutoTokenizer
-        tokenizer = AutoTokenizer.from_pretrained(self.dir_model)
+        tokenizer = AutoTokenizer.from_pretrained(self.dir_model, trust_remote_code=True)
         special_vocab = gguf.SpecialVocab(self.dir_model, load_merges=True)
         tokens, toktypes, tokpre = self.get_vocab_base()
         self.gguf_writer.add_tokenizer_model("gpt2")
