@@ -1,5 +1,6 @@
 #include "models.h"
 #include "llama-kv-cache.h"
+#include "llama-kv-cache-iswa.h"
 
 void llama_model_gemma4::load_arch_hparams(llama_model_loader & ml) {
     hparams.swa_type = LLAMA_SWA_TYPE_STANDARD;
@@ -264,7 +265,7 @@ llama_model_gemma4::graph::graph(const llama_model & model, const llm_graph_para
 
             ggml_tensor * orig_kq_mask = inp_attn->self_kq_mask_cnv;
             if (model.layers[il].topology_router) {
-                ggml_tensor * v_cache = inp_attn->mctx->get_v(ctx0, il);
+                ggml_tensor * v_cache = inp_attn->mctx->get_base()->get_v(ctx0, il);
                 ggml_tensor * condense = ggml_adelic_condense(ctx0, orig_kq_mask, v_cache, model.layers[il].topology_router);
                 ggml_build_forward_expand(gf, condense);
                 inp_attn->self_kq_mask_cnv = condense;
