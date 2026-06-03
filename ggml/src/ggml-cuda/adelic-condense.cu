@@ -80,6 +80,10 @@ void ggml_cuda_op_adelic_condense(ggml_backend_cuda_context & ctx, ggml_tensor *
     ggml_tensor * kq_mask = dst->src[0];
     ggml_tensor * v       = dst->src[1];
 
+    if (dst->data != kq_mask->data) {
+        cudaMemcpyAsync(dst->data, kq_mask->data, ggml_nbytes(dst), cudaMemcpyDeviceToDevice, ctx.stream());
+    }
+
     // kq_mask: [n_kv, n_tokens, 1, n_stream]
     const int n_kv_capacity = kq_mask->ne[0];
     const int n_tokens      = kq_mask->ne[1];
@@ -97,10 +101,10 @@ void ggml_cuda_op_adelic_condense(ggml_backend_cuda_context & ctx, ggml_tensor *
     dim3 grid(n_kv_capacity, n_tokens, n_stream);
 
     adelic_condense_mask_kernel<<<grid, block, 0, ctx.stream()>>>(
-        (char *)kq_mask->data, (char *)v->data,
-        (int)kq_mask->type, (int)v->type,
+        (char *)dst->data, (char *)v->data,
+        (int)dst->type, (int)v->type,
         head_dim, n_kv_capacity, n_tokens, n_stream,
-        kq_mask->nb[0], kq_mask->nb[1], kq_mask->nb[2], kq_mask->nb[3],
+        dst->nb[0], dst->nb[1], dst->nb[2], dst->nb[3],
         v->nb[0], v->nb[1], v->nb[2], v->nb[3],
         v_trans, threshold
     );
