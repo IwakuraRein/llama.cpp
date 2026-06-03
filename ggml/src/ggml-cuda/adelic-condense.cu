@@ -5,6 +5,7 @@
 __global__ void adelic_condense_mask_kernel(
     char * kq_mask,
     char * v_cache,
+    int mask_type,
     int v_type,
     int head_dim,
     int n_kv_capacity,
@@ -66,8 +67,11 @@ __global__ void adelic_condense_mask_kernel(
         float cos_sim = s_dot / (sqrtf(s_norm_curr) * sqrtf(s_norm_prev) + 1e-6f);
         if (cos_sim > threshold) {
             size_t mask_offset = stream_idx * mask_nb3 + q_idx * mask_nb1 + k_idx * mask_nb0;
-            // kq_mask is always GGML_TYPE_F32 (0)
-            *(float *)(kq_mask + mask_offset) = -65504.0f;
+            if (mask_type == 1) {
+                *(half *)(kq_mask + mask_offset) = __float2half(-65504.0f);
+            } else {
+                *(float *)(kq_mask + mask_offset) = -65504.0f;
+            }
         }
     }
 }
@@ -94,7 +98,7 @@ void ggml_cuda_op_adelic_condense(ggml_backend_cuda_context & ctx, ggml_tensor *
 
     adelic_condense_mask_kernel<<<grid, block, 0, ctx.stream()>>>(
         (char *)kq_mask->data, (char *)v->data,
-        (int)v->type,
+        (int)kq_mask->type, (int)v->type,
         head_dim, n_kv_capacity, n_tokens, n_stream,
         kq_mask->nb[0], kq_mask->nb[1], kq_mask->nb[2], kq_mask->nb[3],
         v->nb[0], v->nb[1], v->nb[2], v->nb[3],
