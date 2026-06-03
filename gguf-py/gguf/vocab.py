@@ -563,6 +563,19 @@ class LlamaHfVocab(Vocab):
                 "You can install it with `pip install transformers`."
             ) from e
 
+        # Fix transformers crashing when extra_special_tokens is a list
+        try:
+            config_path = base_path / 'tokenizer_config.json'
+            if config_path.is_file():
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    cfg = json.load(f)
+                if isinstance(cfg.get('extra_special_tokens'), list):
+                    del cfg['extra_special_tokens']
+                    with open(config_path, 'w', encoding='utf-8') as f:
+                        json.dump(cfg, f)
+        except Exception:
+            pass
+
         # Allow the tokenizer to default to slow or fast versions.
         # Explicitly set tokenizer to use local paths.
         self.tokenizer = AutoTokenizer.from_pretrained(
