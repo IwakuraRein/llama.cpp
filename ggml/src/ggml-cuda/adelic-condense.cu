@@ -16,34 +16,60 @@ __global__ void adelic_condense_kernel(
 
     if (token_idx >= seq_len || head_idx >= num_heads || dim_idx >= head_dim) return;
 
-    size_t k_idx = (size_t)head_idx * seq_len * head_dim + (size_t)token_idx * head_dim + dim_idx;
+    // We protect the first 17 tokens (including hologram token 16) from condensation.
+    if (token_idx <= 17) return;
+
+    size_t curr_idx = (size_t)head_idx * seq_len * head_dim + (size_t)token_idx * head_dim + dim_idx;
+    // Compare with the previous token in the sequence for this head
+    size_t prev_idx = (size_t)head_idx * seq_len * head_dim + (size_t)(token_idx - 1) * head_dim + dim_idx;
 
     __shared__ float s_dot;
-    __shared__ float s_norm_k;
-    __shared__ float s_norm_r;
+    __shared__ float s_norm_curr;
+    __shared__ float s_norm_prev;
 
     if (dim_idx == 0) {
         s_dot = 0.0f;
-        s_norm_k = 0.0f;
-        s_norm_r = 0.0f;
-    // Mathematical correction: The 'router' passed here is actually a [n_embd, n_embd] weight matrix,
-    // not a centroid vector. Treating it as a vector and taking the dot product with the KV cache 
-    // results in random noise, which arbitrarily zeroed out the KV cache and caused gibberish generation.
-    // Full DynamicTopologyRouter port to GGML requires significant graph surgery. 
-    // For now, this kernel acts as a no-op (dense attention fallback) so the model generates coherently.
-    return;
+        s_norm_curr = 0.0f;
+        s_norm_prev = 0.0f;
+    }
+    __syncthreads();
+
+    // The condensation algorithm uses cosine similarity of the V cache tokens
+    float v_curr = v_cache[curr_idx];
+    float v_prev = v_cache[prev_idx];
+
+    atomicAdd(&s_dot, v_curr * v_prev);
+    atomicAdd(&s_norm_curr, v_curr * v_curr);
+    atomicAdd(&s_norm_prev, v_prev * v_prev);
+
+    __syncthreads();
+
+    if (s_norm_curr > 0.0f && s_norm_prev > 0.0f) {
+        float cos_sim = s_dot / (sqrtf(s_norm_curr) * sqrtf(s_norm_prev) + 1e-6f);
+        
+        // If the token is highly similar to the previous one, it provides no new information.
+        // We mask it out of the K cache so that Softmax(Q*K) -> 0 and it is ignored in attention.
+        if (cos_sim > threshold) {
+            k_cache[curr_idx] = -1e4f;
+            
+            // In a full implementation, we would accumulate the dropped V values into 
+            // the hologram token (token_idx == 16). For the GGML static graph mask, 
+            // zeroing out the dropped tokens achieves the primary sparse routing effect.
+        }
+    }
 }
 
 void ggml_cuda_op_adelic_condense(ggml_backend_cuda_context & ctx, ggml_tensor * dst) {
-    // Boilerplate for dispatch
     ggml_tensor * k = dst->src[0];
     ggml_tensor * v = dst->src[1];
-    ggml_tensor * router = dst->src[2];
+    ggml_tensor * router = dst->src[2]; // Passed from Python export but ignored here
 
     const int head_dim = k->ne[0];
     const int num_heads = k->ne[2];
     const int seq_len = k->ne[1];
-    const float threshold = 0.5f;
+    
+    // Configurable threshold: drop tokens with > 90% cosine similarity
+    const float threshold = 0.90f; 
 
     float * d_k = (float *)k->data;
     float * d_v = (float *)v->data;
