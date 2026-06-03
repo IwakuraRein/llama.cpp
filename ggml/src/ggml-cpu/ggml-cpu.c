@@ -2088,6 +2088,7 @@ static void ggml_compute_forward(struct ggml_compute_params * params, struct ggm
             }
             break;
         case GGML_OP_NONE:
+        case GGML_OP_ADELIC_CONDENSE:
             {
                 // nop
             } break;

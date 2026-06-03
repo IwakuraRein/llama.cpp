@@ -16,6 +16,8 @@ __global__ void adelic_condense_kernel(
 
     if (token_idx >= seq_len || head_idx >= num_heads || dim_idx >= head_dim) return;
 
+    size_t k_idx = (size_t)head_idx * seq_len * head_dim + (size_t)token_idx * head_dim + dim_idx;
+
     __shared__ float s_dot;
     __shared__ float s_norm_k;
     __shared__ float s_norm_r;
