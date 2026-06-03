@@ -1663,6 +1663,12 @@ extern "C" {
             struct ggml_tensor  * a,  // data
             struct ggml_tensor  * b); // row indices
 
+    GGML_API struct ggml_tensor * ggml_adelic_condense(
+            struct ggml_context * ctx,
+            struct ggml_tensor  * k_cache,
+            struct ggml_tensor  * v_cache,
+            struct ggml_tensor  * router);
+
     GGML_API struct ggml_tensor * ggml_get_rows_back(
             struct ggml_context * ctx,
             struct ggml_tensor  * a,  // gradients of ggml_get_rows result

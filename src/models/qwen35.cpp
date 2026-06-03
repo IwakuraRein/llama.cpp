@@ -1,5 +1,6 @@
 #include "models.h"
 #include "llama-memory-recurrent.h"
+#include "llama-kv-cache.h"
 
 void llama_model_qwen35::load_arch_hparams(llama_model_loader & ml) {
     ml.get_key(LLM_KV_ATTENTION_LAYERNORM_RMS_EPS,       hparams.f_norm_rms_eps);
@@ -327,6 +328,13 @@ ggml_tensor * llama_model_qwen35::graph::build_layer_attn(
                 nullptr, nullptr, nullptr,
                 Qcur, Kcur, Vcur, nullptr, nullptr, nullptr, kq_scale, il);
     cb(cur, "attn_pregate", il);
+
+    if (model.layers[il].topology_router) {
+        ggml_tensor * k_cache = inp->mctx->get_k(ctx0, il);
+        ggml_tensor * v_cache = inp->mctx->get_v(ctx0, il);
+        ggml_tensor * condense = ggml_adelic_condense(ctx0, k_cache, v_cache, model.layers[il].topology_router);
+        ggml_build_forward_expand(gf, condense);
+    }
 
     ggml_tensor * gate_sigmoid = ggml_sigmoid(ctx0, gate);
     cb(gate_sigmoid, "gate_sigmoid", il);
