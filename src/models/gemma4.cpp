@@ -1,4 +1,5 @@
 #include "models.h"
+#include "llama-kv-cache.h"
 
 void llama_model_gemma4::load_arch_hparams(llama_model_loader & ml) {
     hparams.swa_type = LLAMA_SWA_TYPE_STANDARD;
