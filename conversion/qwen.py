@@ -621,6 +621,12 @@ class _Qwen35MtpMixin:
 class Qwen3_5TextModel(_Qwen35MtpMixin, _Qwen35MRopeMixin, _LinearAttentionVReorderBase):
     model_arch = gguf.MODEL_ARCH.QWEN35
 
+    def set_vocab(self):
+        try:
+            self._set_vocab_sentencepiece()
+        except Exception:
+            self._set_vocab_gpt2()
+
 
 @ModelBase.register("Qwen3_5MoeForConditionalGeneration", "Qwen3_5MoeForCausalLM")
 class Qwen3_5MoeTextModel(_Qwen35MtpMixin, _Qwen35MRopeMixin, _LinearAttentionVReorderBase):
