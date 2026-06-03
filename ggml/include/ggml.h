@@ -1665,7 +1665,7 @@ extern "C" {
 
     GGML_API struct ggml_tensor * ggml_adelic_condense(
             struct ggml_context * ctx,
-            struct ggml_tensor  * k_cache,
+            struct ggml_tensor  * kq_mask,
             struct ggml_tensor  * v_cache,
             struct ggml_tensor  * router);
 

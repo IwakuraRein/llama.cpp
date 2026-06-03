@@ -324,17 +324,23 @@ ggml_tensor * llama_model_qwen35::graph::build_layer_attn(
     // Attention computation
     const float kq_scale = hparams.f_attention_scale == 0.0f ? 1.0f / sqrtf(float(n_embd_head)) : hparams.f_attention_scale;
 
+    ggml_tensor * orig_kq_mask = inp->self_kq_mask_cnv;
+    if (model.layers[il].topology_router) {
+        ggml_tensor * v_cache = inp->mctx->get_v(ctx0, il);
+        ggml_tensor * condense = ggml_adelic_condense(ctx0, orig_kq_mask, v_cache, model.layers[il].topology_router);
+        ggml_build_forward_expand(gf, condense);
+        inp->self_kq_mask_cnv = condense;
+    }
+
     cur = build_attn(inp,
                 nullptr, nullptr, nullptr,
                 Qcur, Kcur, Vcur, nullptr, nullptr, nullptr, kq_scale, il);
-    cb(cur, "attn_pregate", il);
-
+    
     if (model.layers[il].topology_router) {
-        ggml_tensor * k_cache = inp->mctx->get_k(ctx0, il);
-        ggml_tensor * v_cache = inp->mctx->get_v(ctx0, il);
-        ggml_tensor * condense = ggml_adelic_condense(ctx0, k_cache, v_cache, model.layers[il].topology_router);
-        ggml_build_forward_expand(gf, condense);
+        inp->self_kq_mask_cnv = orig_kq_mask;
     }
+
+    cb(cur, "attn_pregate", il);
 
     ggml_tensor * gate_sigmoid = ggml_sigmoid(ctx0, gate);
     cb(gate_sigmoid, "gate_sigmoid", il);

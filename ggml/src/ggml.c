@@ -3900,15 +3900,15 @@ struct ggml_tensor * ggml_get_rows_back(
 
 struct ggml_tensor * ggml_adelic_condense(
         struct ggml_context * ctx,
-        struct ggml_tensor  * k_cache,
+        struct ggml_tensor  * kq_mask,
         struct ggml_tensor  * v_cache,
         struct ggml_tensor  * router) {
 
-    // Return a tensor with same shape as k_cache
-    struct ggml_tensor * result = ggml_new_tensor_4d(ctx, k_cache->type, k_cache->ne[0], k_cache->ne[1], k_cache->ne[2], k_cache->ne[3]);
+    // Return a duplicate view of kq_mask so it doesn't modify the global mask
+    struct ggml_tensor * result = ggml_dup_tensor(ctx, kq_mask);
 
     result->op     = GGML_OP_ADELIC_CONDENSE;
-    result->src[0] = k_cache;
+    result->src[0] = kq_mask;
     result->src[1] = v_cache;
     result->src[2] = router;
 
