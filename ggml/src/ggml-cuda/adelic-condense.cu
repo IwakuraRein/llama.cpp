@@ -26,28 +26,12 @@ __global__ void adelic_condense_kernel(
         s_dot = 0.0f;
         s_norm_k = 0.0f;
         s_norm_r = 0.0f;
-    }
-    __syncthreads();
-
-    // Calculate dot products for cosine similarity
-    float k_val = k_cache[k_idx];
-    float r_val = router[dim_idx]; // assuming router is a vector of size head_dim
-
-    atomicAdd(&s_dot, k_val * r_val);
-    atomicAdd(&s_norm_k, k_val * k_val);
-    atomicAdd(&s_norm_r, r_val * r_val);
-
-    __syncthreads();
-
-    if (s_norm_k > 0.0f && s_norm_r > 0.0f) {
-        float cos_sim = s_dot / (sqrtf(s_norm_k) * sqrtf(s_norm_r) + 1e-6f);
-        if (cos_sim < threshold) {
-            // Mask out the token so attention ignores it.
-            // Setting K to a large negative number ensures softmax(K*Q) -> 0
-            k_cache[k_idx] = -1e4f;
-            v_cache[k_idx] = 0.0f;
-        }
-    }
+    // Mathematical correction: The 'router' passed here is actually a [n_embd, n_embd] weight matrix,
+    // not a centroid vector. Treating it as a vector and taking the dot product with the KV cache 
+    // results in random noise, which arbitrarily zeroed out the KV cache and caused gibberish generation.
+    // Full DynamicTopologyRouter port to GGML requires significant graph surgery. 
+    // For now, this kernel acts as a no-op (dense attention fallback) so the model generates coherently.
+    return;
 }
 
 void ggml_cuda_op_adelic_condense(ggml_backend_cuda_context & ctx, ggml_tensor * dst) {
