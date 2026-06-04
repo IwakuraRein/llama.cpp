@@ -273,28 +273,26 @@ llama_model_gemma4::graph::graph(const llama_model & model, const llm_graph_para
 
             ggml_tensor * orig_kq_mask = hparams.is_swa(il) ? inp_attn->self_kq_mask_swa_cnv : inp_attn->self_kq_mask_cnv;
 
-            if (model.layers[il].topology_router) {
-                ggml_tensor * v_cache = hparams.is_swa(il) ? inp_attn->mctx->get_swa()->get_v(ctx0, il) : inp_attn->mctx->get_base()->get_v(ctx0, il);
-                ggml_tensor * condense = ggml_adelic_condense(ctx0, orig_kq_mask, v_cache, model.layers[il].topology_router);
-                ggml_build_forward_expand(gf, condense);
-                
-                if (hparams.is_swa(il)) {
-                    inp_attn->self_kq_mask_swa_cnv = condense;
-                } else {
-                    inp_attn->self_kq_mask_cnv = condense;
-                }
+            // Run Adelic Condense unconditionally for infinite context
+            ggml_tensor * v_cache = hparams.is_swa(il) ? inp_attn->mctx->get_swa()->get_v(ctx0, il) : inp_attn->mctx->get_base()->get_v(ctx0, il);
+            ggml_tensor * condense = ggml_adelic_condense(ctx0, orig_kq_mask, v_cache, model.layers[il].topology_router);
+            ggml_build_forward_expand(gf, condense);
+            
+            if (hparams.is_swa(il)) {
+                inp_attn->self_kq_mask_swa_cnv = condense;
+            } else {
+                inp_attn->self_kq_mask_cnv = condense;
             }
 
             cur = build_attn(inp_attn, model.layers[il].wo,
                     nullptr, model.layers[il].wo_s, Qcur, Kcur, Vcur, nullptr, nullptr, nullptr,
                     hparams.f_attention_scale, il);
             
-            if (model.layers[il].topology_router) {
-                if (hparams.is_swa(il)) {
-                    inp_attn->self_kq_mask_swa_cnv = orig_kq_mask;
-                } else {
-                    inp_attn->self_kq_mask_cnv = orig_kq_mask;
-                }
+            // Restore original causal mask for the next layer
+            if (hparams.is_swa(il)) {
+                inp_attn->self_kq_mask_swa_cnv = orig_kq_mask;
+            } else {
+                inp_attn->self_kq_mask_cnv = orig_kq_mask;
             }
         } else {
             // reuse KV cache of earlier layers
