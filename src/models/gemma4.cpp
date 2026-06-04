@@ -267,7 +267,7 @@ llama_model_gemma4::graph::graph(const llama_model & model, const llm_graph_para
 
             if (model.layers[il].topology_router) {
                 ggml_tensor * v_cache = hparams.is_swa(il) ? inp_attn->mctx->get_swa()->get_v(ctx0, il) : inp_attn->mctx->get_base()->get_v(ctx0, il);
-                ggml_tensor * condense = ggml_adelic_condense(ctx0, orig_kq_mask, v_cache, v_cache);
+                ggml_tensor * condense = ggml_adelic_condense(ctx0, orig_kq_mask, v_cache, model.layers[il].topology_router);
                 ggml_build_forward_expand(gf, condense);
                 
                 if (hparams.is_swa(il)) {
