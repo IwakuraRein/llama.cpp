@@ -63,14 +63,17 @@ __global__ void adelic_condense_mask_kernel(
 
     __syncthreads();
 
-    if (s_norm_curr > 0.0f && s_norm_prev > 0.0f) {
-        float cos_sim = s_dot / (sqrtf(s_norm_curr) * sqrtf(s_norm_prev) + 1e-6f);
-        if (cos_sim > threshold) {
-            size_t mask_offset = stream_idx * mask_nb3 + q_idx * mask_nb1 + k_idx * mask_nb0;
-            if (mask_type == 1) {
-                *(half *)(kq_mask + mask_offset) = __float2half(-65504.0f);
-            } else {
-                *(float *)(kq_mask + mask_offset) = -65504.0f;
+    if (dim_idx == 0) {
+        if (s_norm_curr > 0.0f && s_norm_prev > 0.0f) {
+            float cos_sim = s_dot / (sqrtf(s_norm_curr) * sqrtf(s_norm_prev) + 1e-6f);
+            if (cos_sim > threshold && k_idx > 0) {
+                // Prune the older token (k_idx - 1) instead of the newer one
+                size_t mask_offset = stream_idx * mask_nb3 + q_idx * mask_nb1 + (k_idx - 1) * mask_nb0;
+                if (mask_type == 1) {
+                    *(half *)(kq_mask + mask_offset) = __float2half(-65504.0f);
+                } else {
+                    *(float *)(kq_mask + mask_offset) = -65504.0f;
+                }
             }
         }
     }
@@ -95,7 +98,7 @@ void ggml_cuda_op_adelic_condense(ggml_backend_cuda_context & ctx, ggml_tensor *
     const int num_heads = v->ne[1];
     const bool v_trans  = false;
 
-    const float threshold = 0.90f; 
+    const float threshold = 0.999f; 
 
     dim3 block(head_dim);
     dim3 grid(n_kv_capacity, n_tokens, n_stream);
