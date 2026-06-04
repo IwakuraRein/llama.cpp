@@ -156,6 +156,14 @@ public:
                 arr[id] = -INFINITY;
             }
         }
+        
+        // Force suppress known multimodal tokens for gemma4 that leak during text generation
+        std::vector<llama_token> force_suppress = {258880, 258881, 258882, 258883, 258884, 255999, 256000};
+        for (llama_token id : force_suppress) {
+            if (0 <= id && id < (int32_t)vocab.n_tokens()) {
+                arr[id] = -INFINITY;
+            }
+        }
     }
     virtual ~llm_graph_input_logits_bias() = default;
 
@@ -442,7 +450,7 @@ llama_model_gemma4::graph::graph(const llama_model & model, const llm_graph_para
     // apply logits bias if needed (e.g. for gemma4_unified patch)
     // this is to mirror the suppress_tokens patch on transformers, to avoid model from outputing <image|> and <audio|> tokens (which is a known issue related to the checkpoint)
     // TODO: maybe handle this inside the sampling system in the future
-    if (!model.vocab.get_suppress_tokens().empty()) {
+    {
         auto inp_bias = std::make_unique<llm_graph_input_logits_bias>(model.vocab);
         inp_bias->logits_bias = ggml_new_tensor_1d(ctx0, GGML_TYPE_F32, inp_bias->arr.size());
         cur = ggml_add(ctx0, cur, inp_bias->logits_bias);
